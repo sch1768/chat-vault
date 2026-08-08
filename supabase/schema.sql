@@ -1,4 +1,4 @@
-# Supabase Database Schema for AI Conversation Knowledge Manager
+-- Supabase Database Schema for AI Conversation Knowledge Manager
 
 -- 1. Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
