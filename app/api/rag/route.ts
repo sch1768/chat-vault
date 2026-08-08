@@ -4,7 +4,7 @@ import { searchRelevantChunks, getConversationById } from '@/lib/storage';
 
 export async function POST(req: NextRequest) {
   try {
-    const { conversationId, query } = await req.json();
+    const { conversationId, query, model } = await req.json();
 
     if (!conversationId || !query) {
       return NextResponse.json({ error: '대화 ID와 질문 내용이 필요합니다.' }, { status: 400 });
@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
     // Fetch conversation for fallback
     const conversation = await getConversationById(conversationId);
 
-    // 3. Generate RAG Response with Gemini & Fallback
-    const answer = await generateRagAnswer(query, relevantChunks, conversation?.full_markdown);
+    // 3. Generate RAG Response with selected Model
+    const answer = await generateRagAnswer(query, relevantChunks, conversation?.full_markdown, model);
 
     return NextResponse.json({
       success: true,

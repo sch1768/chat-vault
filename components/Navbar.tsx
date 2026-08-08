@@ -8,10 +8,33 @@ interface NavbarProps {
   onOpenImportModal: () => void;
   fontSize: 'sm' | 'base' | 'lg';
   setFontSize: (size: 'sm' | 'base' | 'lg') => void;
+  ragModel?: string;
+  setRagModel?: (model: string) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenImportModal, fontSize, setFontSize }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  onOpenImportModal,
+  fontSize,
+  setFontSize,
+  ragModel: propRagModel,
+  setRagModel: propSetRagModel,
+}) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [localRagModel, setLocalRagModel] = useState<string>('gemma-4-31b-it');
+
+  useEffect(() => {
+    const savedModel = localStorage.getItem('chatvault_rag_model');
+    if (savedModel) setLocalRagModel(savedModel);
+  }, []);
+
+  const handleModelChange = (model: string) => {
+    setLocalRagModel(model);
+    localStorage.setItem('chatvault_rag_model', model);
+    window.dispatchEvent(new Event('storage'));
+    if (propSetRagModel) propSetRagModel(model);
+  };
+
+  const currentModel = propRagModel || localRagModel;
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
@@ -66,11 +89,54 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenImportModal, fontSize, set
           </div>
 
           <div className="space-y-4 text-xs">
+            {/* RAG AI Model Selection */}
+            <div>
+              <label className="text-slate-400 font-semibold mb-1.5 block flex items-center gap-1">
+                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                <span>RAG 채팅 AI 모델 선택</span>
+              </label>
+              <div className="grid grid-cols-1 gap-1.5 rounded-xl bg-slate-950 p-1 border border-slate-800">
+                <button
+                  onClick={() => handleModelChange('gemma-4-31b-it')}
+                  className={`py-1.5 px-2 rounded-lg font-bold text-left flex items-center justify-between transition ${
+                    currentModel === 'gemma-4-31b-it'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>Gemma-4 31B (기본)</span>
+                  {currentModel === 'gemma-4-31b-it' && <span className="text-[10px]">✓</span>}
+                </button>
+                <button
+                  onClick={() => handleModelChange('gemini-2.5-flash-lite')}
+                  className={`py-1.5 px-2 rounded-lg font-bold text-left flex items-center justify-between transition ${
+                    currentModel === 'gemini-2.5-flash-lite'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>Gemini 2.5 Flash Lite (빠름)</span>
+                  {currentModel === 'gemini-2.5-flash-lite' && <span className="text-[10px]">✓</span>}
+                </button>
+                <button
+                  onClick={() => handleModelChange('gemini-1.5-flash-lite')}
+                  className={`py-1.5 px-2 rounded-lg font-bold text-left flex items-center justify-between transition ${
+                    currentModel === 'gemini-1.5-flash-lite'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>Gemini 1.5 Flash Lite (초경량)</span>
+                  {currentModel === 'gemini-1.5-flash-lite' && <span className="text-[10px]">✓</span>}
+                </button>
+              </div>
+            </div>
+
             {/* Font Size Option */}
             <div>
               <label className="text-slate-400 font-semibold mb-1.5 block flex items-center gap-1">
                 <Type className="h-3.5 w-3.5 text-indigo-400" />
-                <span>대화 본문 글자 크기</span>
+                <span>글자 크기 (전체 UI 연동)</span>
               </label>
               <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-950 p-1 border border-slate-800">
                 <button

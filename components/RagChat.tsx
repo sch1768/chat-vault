@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, Loader2, Info } from 'lucide-react';
 import { RagChatMessage } from '@/lib/types';
 
@@ -17,6 +17,20 @@ export const RagChat: React.FC<RagChatProps> = ({ conversationId }) => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [ragModel, setRagModel] = useState<string>('gemma-4-31b-it');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('chatvault_rag_model');
+    if (saved) setRagModel(saved);
+
+    const handleStorageChange = () => {
+      const updated = localStorage.getItem('chatvault_rag_model');
+      if (updated) setRagModel(updated);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +54,7 @@ export const RagChat: React.FC<RagChatProps> = ({ conversationId }) => {
         body: JSON.stringify({
           conversationId,
           query: userQuery,
+          model: ragModel,
         }),
       });
 

@@ -106,7 +106,8 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 export async function generateRagAnswer(
   query: string,
   contextChunks: { speaker: string; content: string }[],
-  fullMarkdownFallback?: string
+  fullMarkdownFallback?: string,
+  selectedModel: string = 'gemma-4-31b-it'
 ): Promise<string> {
   if (!apiKey) {
     return 'GEMINI_API_KEY 환경변수가 설정되지 않았습니다. Vercel 환경변수나 .env.local 파일에 설정해 주세요.';
@@ -116,19 +117,17 @@ export async function generateRagAnswer(
     .map((c, i) => `[참고 맥락 ${i + 1} (${c.speaker})]:\n${c.content}`)
     .join('\n\n');
 
-  // Fallback to full markdown if vector search returned few or short chunks
   if ((!contextChunks || contextChunks.length === 0) && fullMarkdownFallback) {
     contextText = `[전체 대화 맥락]:\n${fullMarkdownFallback.slice(0, 10000)}`;
   }
 
   const prompt = `
-당신은 사용자의 지난 AI 대화 기록을 바탕으로 질문에 친절하고 정확하게 답변하는 지식 보조 AI입니다.
+당신은 사용자의 지난 AI 대화 기록을 바탕으로 질문에 정확하고 명확하게 답변하는 지식 보조 AI입니다.
 
 [요구사항]
-1. 최우선적으로 아래 주어진 [대화 맥락]을 참고하여 사용자의 [질문]에 답변해 주세요.
-2. 만약 [대화 맥락]에서 질문에 대한 직접적인 언급이 다소 부족하거나 정확히 일치하지 않는 경우:
-   - "💡 **저장된 대화 기록에서는 정확히 일치하는 문장을 찾기 어렵지만, 대화 내용 및 AI 지식을 바탕으로 정리해 드립니다.**"라는 안내 문구를 맨 첫 줄에 넣은 뒤, 
-   - 사용자의 질문에 대해 구구절절 길지 않고 **핵심 위주로 짧고 명확하게(2~4문장 내외)** 바로 답변을 제공해 주세요. 절대 무작정 "확인되지 않는 내용입니다"라고 단답형으로 거절하지 마세요.
+1. 아래 [대화 맥락]을 바탕으로 사용자의 [질문]에 핵심 위주로 명확하고 부드럽게 답변해 주세요 (2~4문장 내외).
+2. [대화 맥락]에 해당 질문에 관한 내용(예: 특정 음식, 조리법, 팁 등)이 포함되어 있다면 "정확히 일치하는 문장을 찾기 어렵다"는 식의 어색한 안내문구를 절대 출력하지 마시고, 대화 맥락의 핵심 정보를 활용해 바로 자연스럽게 답변해 주세요.
+3. 정말로 대화 맥락과 완전히 무관한 질문일 경우에만 어색하지 않게 간단히 언급하고 답변해 주세요.
 
 [대화 맥락]:
 ${contextText}
@@ -137,9 +136,17 @@ ${contextText}
 ${query}
 `;
 
+  // Model name mapping
+  let modelName = 'gemma-4-31b-it';
+  if (selectedModel === 'gemini-2.5-flash-lite') {
+    modelName = 'gemini-2.5-flash-lite';
+  } else if (selectedModel === 'gemini-1.5-flash-lite' || selectedModel === 'gemini-1.5-flash') {
+    modelName = 'gemini-1.5-flash';
+  }
+
   try {
     const response = await ai.models.generateContent({
-      model: 'gemma-4-31b-it',
+      model: modelName,
       contents: prompt,
     });
 

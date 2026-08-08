@@ -97,7 +97,11 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div
+      className={`min-h-screen flex flex-col bg-slate-950 text-slate-100 ${
+        fontSize === 'sm' ? 'text-xs' : fontSize === 'lg' ? 'text-base' : 'text-sm'
+      }`}
+    >
       {/* Standard Fixed Navbar with Settings & Register Link buttons */}
       <Navbar
         onOpenImportModal={() => setIsImportModalOpen(true)}
