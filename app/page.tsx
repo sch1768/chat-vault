@@ -23,10 +23,22 @@ export default function Home() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [initialSharedUrl, setInitialSharedUrl] = useState('');
+
   useEffect(() => {
     const hideGuide = localStorage.getItem('chatvault_hide_guide');
     if (!hideGuide) {
       setIsGuidePopupOpen(true);
+    }
+
+    // Catch Web Share Target API URL query params
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const sharedUrl = params.get('url') || params.get('text') || params.get('title');
+      if (sharedUrl && (sharedUrl.startsWith('http://') || sharedUrl.startsWith('https://'))) {
+        setInitialSharedUrl(sharedUrl);
+        setIsImportModalOpen(true);
+      }
     }
   }, []);
 
@@ -254,6 +266,7 @@ export default function Home() {
 
       <ImportModal
         isOpen={isImportModalOpen}
+        initialUrl={initialSharedUrl}
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={(id) => {
           fetchConversations();

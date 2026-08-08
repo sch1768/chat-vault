@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Link2, FileText, Loader2, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ParsedConversation, ConversationSummary } from '@/lib/types';
 import confetti from 'canvas-confetti';
@@ -7,12 +7,19 @@ interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (id: string) => void;
+  initialUrl?: string;
 }
 
-export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [inputVal, setInputVal] = useState('');
+export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuccess, initialUrl = '' }) => {
+  const [inputVal, setInputVal] = useState(initialUrl);
   const [step, setStep] = useState<number>(0); // 0: Idle, 1: Parsing (30%), 2: Summarizing (60%), 3: Embedding (100%)
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialUrl) {
+      setInputVal(initialUrl);
+    }
+  }, [initialUrl]);
 
   if (!isOpen) return null;
 
