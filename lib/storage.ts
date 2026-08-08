@@ -62,13 +62,16 @@ export async function saveConversationToStorage(
 
     if (convErr) {
       console.error('Supabase conversation insert error:', convErr);
-    } else {
-      const { error: chunkErr } = await supabase.from('conversation_chunks').insert(chunksToSave);
-      if (chunkErr) {
-        console.error('Supabase chunks insert error:', chunkErr);
-      }
-      return conversationId;
+      throw new Error(`Supabase 저장 실패: ${convErr.message} (코드: ${convErr.code})`);
     }
+
+    const { error: chunkErr } = await supabase.from('conversation_chunks').insert(chunksToSave);
+    if (chunkErr) {
+      console.error('Supabase chunks insert error:', chunkErr);
+      throw new Error(`Supabase 조각 저장 실패: ${chunkErr.message}`);
+    }
+
+    return conversationId;
   }
 
   // Fallback to memory storage
