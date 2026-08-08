@@ -269,7 +269,7 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
                       <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-800/60">
                         <span className="text-base">{isUser ? '👤' : '🤖'}</span>
                         <span className={`text-xs font-bold ${isUser ? 'text-indigo-300' : 'text-purple-300'}`}>
-                          {isUser ? 'User' : 'Assistant'}
+                          {isUser ? 'User' : 'AI'}
                         </span>
                       </div>
 

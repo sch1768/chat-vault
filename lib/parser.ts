@@ -122,10 +122,14 @@ async function parseViaJinaReader(
   let extractedTitle = '';
   const titleLineMatch = rawMarkdown.match(/^Title:\s*(.+)$/m);
   if (titleLineMatch && titleLineMatch[1]) {
-    extractedTitle = titleLineMatch[1]
-      .replace(/^Gemini\s*[-–—]\s*/i, '')
-      .replace(/^ChatGPT\s*[-–—]\s*/i, '')
-      .trim();
+    const rawTitle = titleLineMatch[1].trim();
+    // Filter out generic site tagline "Gemini - direct access to Google AI" or similar
+    if (!/direct access to Google AI/i.test(rawTitle) && !/^Gemini$/i.test(rawTitle)) {
+      extractedTitle = rawTitle
+        .replace(/^Gemini\s*[-–—]\s*/i, '')
+        .replace(/^ChatGPT\s*[-–—]\s*/i, '')
+        .trim();
+    }
   }
 
   const cleanedMarkdown = cleanScrapedMarkdown(rawMarkdown);
@@ -134,6 +138,15 @@ async function parseViaJinaReader(
 
   if (extractedTitle && (parsed.title === 'Untitled AI Conversation' || parsed.title === 'Gemini Shared Conversation')) {
     parsed.title = extractedTitle;
+  }
+
+  // Fallback: If title is still generic, use first user question as title (max 25 chars)
+  if (!parsed.title || parsed.title === 'Untitled AI Conversation' || /direct access to Google AI/i.test(parsed.title)) {
+    const firstUserTurn = parsed.turns.find((t) => t.speaker === 'user');
+    if (firstUserTurn && firstUserTurn.content) {
+      const firstLine = firstUserTurn.content.split('\n')[0].trim();
+      parsed.title = firstLine.length > 25 ? `${firstLine.slice(0, 25)}...` : firstLine;
+    }
   }
 
   return parsed;
@@ -226,12 +239,24 @@ function parseMarkdownContent(
       const content = trimmed.replace(/^(?:###?\s*(?:Assistant|Gemini|ChatGPT|Response):?)/i, '').trim();
       if (content) turns.push({ speaker: 'assistant', content });
     } else {
-      // Append to previous turn or create initial turn
+      // If block contains numbered list like "1. 샌디스크 실적 발표" or starts with AI response format, treat as assistant
       const lastTurn = turns[turns.length - 1];
-      if (lastTurn) {
+      if (lastTurn && lastTurn.speaker === 'user' && (/^\d+\.\s+/.test(trimmed) || /^[A-Z]\.\s+/.test(trimmed))) {
+        turns.push({ speaker: 'assistant', content: trimmed });
+      } else if (lastTurn) {
         lastTurn.content += `\n\n${trimmed}`;
       } else {
-        turns.push({ speaker: 'user', content: trimmed });
+        // First block without header: If it has numbered list, split first line as User question and rest as AI answer
+        const lines = trimmed.split('\n');
+        const firstLine = lines[0]?.trim() || '';
+        const restText = lines.slice(1).join('\n').trim();
+
+        if (firstLine && restText) {
+          turns.push({ speaker: 'user', content: firstLine });
+          turns.push({ speaker: 'assistant', content: restText });
+        } else {
+          turns.push({ speaker: 'user', content: trimmed });
+        }
       }
     }
   }
