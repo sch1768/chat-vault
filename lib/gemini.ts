@@ -94,12 +94,20 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
   try {
     const response = await ai.models.embedContent({
-      model: 'gemini-embedding-001',
+      model: 'text-embedding-004',
       contents: text.slice(0, 2048),
+      config: {
+        outputDimensionality: 768,
+      },
     });
 
     const resObj = response as unknown as { embedding?: { values: number[] }; embeddings?: { values: number[] }[] };
-    return resObj.embedding?.values || resObj.embeddings?.[0]?.values || new Array(768).fill(0.01);
+    const values = resObj.embedding?.values || resObj.embeddings?.[0]?.values;
+
+    if (values && values.length > 0) {
+      return values.slice(0, 768);
+    }
+    return new Array(768).fill(0.01);
   } catch (err) {
     console.error('Gemini embedding failed:', err);
     return new Array(768).fill(0.01);
