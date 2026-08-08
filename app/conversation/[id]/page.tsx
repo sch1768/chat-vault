@@ -15,6 +15,10 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Edit2,
+  Bot,
+  User,
+  Brain,
 } from 'lucide-react';
 
 export default function ConversationDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,7 +28,11 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
   const [conversation, setConversation] = useState<ConversationRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [isOriginalOpen, setIsOriginalOpen] = useState(true); // Toggle default open
+  const [isOriginalOpen, setIsOriginalOpen] = useState(true); // Default open
+
+  // Title editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState('');
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -33,6 +41,7 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
         const data = await res.json();
         if (data.conversation) {
           setConversation(data.conversation);
+          setTitleInput(data.conversation.title);
         }
       } catch (err) {
         console.error('Failed to fetch conversation detail:', err);
@@ -43,6 +52,24 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
 
     fetchDetail();
   }, [id]);
+
+  const handleSaveTitle = async () => {
+    if (!titleInput.trim() || !conversation) return;
+    try {
+      const res = await fetch(`/api/conversations/${id}/title`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: titleInput.trim() }),
+      });
+      if (res.ok) {
+        setConversation({ ...conversation, title: titleInput.trim() });
+      }
+    } catch (err) {
+      console.error('Failed to save title:', err);
+    } finally {
+      setIsEditingTitle(false);
+    }
+  };
 
   const handleCopyMarkdown = () => {
     if (!conversation) return;
@@ -72,8 +99,8 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md px-4 py-3 sm:px-8 flex items-center justify-between">
+      {/* Fixed Clean Header */}
+      <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md px-4 py-3 sm:px-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
             href="/"
@@ -81,48 +108,101 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-semibold text-indigo-400 border border-indigo-500/20 uppercase">
-                {conversation.source_type}
-              </span>
-              <h1 className="text-base font-bold text-white line-clamp-1">{conversation.title}</h1>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-black tracking-tight text-white">ChatVault</span>
+            <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-400 border border-indigo-500/20">
+              v.1
+            </span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopyMarkdown}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 border border-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition"
-          >
-            {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-            <span>{copied ? '복사됨!' : '마크다운 복사'}</span>
-          </button>
-
-          {conversation.original_url && (
-            <a
-              href={conversation.original_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600/20 border border-indigo-500/30 px-3 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-600/30 transition"
-            >
-              <span>원본 공유 링크</span>
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          )}
         </div>
       </header>
 
-      {/* Main Split View: Left (Original Viewer), Right (RAG Chat) */}
+      {/* Main Split View */}
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-        {/* Left Column: Summary & Parsed Conversation Viewer */}
+        {/* Left Column: Metadata Header, Summary & Parsed Conversation Viewer */}
         <section className="lg:col-span-7 space-y-6">
+          {/* Sub Header: Source Badge, Editable Title, Short Share Link */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3 shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                {/* Source Badge with Icon */}
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider ${
+                    conversation.source_type === 'chatgpt'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : conversation.source_type === 'gemini'
+                      ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                      : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                  }`}
+                >
+                  <span className="text-sm">
+                    {conversation.source_type === 'chatgpt' ? '🤖' : conversation.source_type === 'gemini' ? '✨' : '📝'}
+                  </span>
+                  <span>{conversation.source_type}</span>
+                </span>
+              </div>
+
+              {/* Short Link Button */}
+              {conversation.original_url && (
+                <a
+                  href={conversation.original_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-xl bg-slate-800/80 border border-slate-700/60 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-700 transition"
+                >
+                  <span>원문 보기</span>
+                  <ExternalLink className="h-3 w-3 text-slate-400" />
+                </a>
+              )}
+            </div>
+
+            {/* Editable Title Section */}
+            <div>
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="text"
+                    value={titleInput}
+                    onChange={(e) => setTitleInput(e.target.value)}
+                    className="flex-1 rounded-xl border border-indigo-500 bg-slate-950 px-3 py-1.5 text-sm text-white focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSaveTitle}
+                    className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500"
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTitleInput(conversation.title);
+                      setIsEditingTitle(false);
+                    }}
+                    className="rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-white"
+                  >
+                    취소
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2 group">
+                  <h2 className="text-lg font-bold text-white leading-snug">{conversation.title}</h2>
+                  <button
+                    onClick={() => setIsEditingTitle(true)}
+                    title="제목 수정"
+                    className="opacity-60 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-indigo-300 transition"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Summary Card */}
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4 shadow-lg">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-indigo-400" />
-              <h3 className="text-sm font-bold text-white">Gemini AI 핵심 요약 & 결론</h3>
+              <h3 className="text-sm font-bold text-white">Gemma AI 핵심 요약 & 결론</h3>
             </div>
             <div className="space-y-2.5 rounded-xl bg-slate-950 p-4 border border-slate-800">
               {conversation.summary_3lines.map((line, idx) => (
@@ -149,21 +229,33 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
 
           {/* Toggleable Original Conversation Viewer */}
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4 shadow-lg">
-            <button
-              onClick={() => setIsOriginalOpen(!isOriginalOpen)}
-              className="w-full flex items-center justify-between border-b border-slate-800 pb-3 text-left transition hover:opacity-90"
-            >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-indigo-400" />
                 <h3 className="text-sm font-bold text-white">
                   파싱된 원본 대화 내용 ({conversation.turn_count} 턴)
                 </h3>
               </div>
-              <div className="flex items-center gap-1 text-xs text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg">
-                <span>{isOriginalOpen ? '접기' : '펼치기'}</span>
-                {isOriginalOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+
+              <div className="flex items-center gap-2">
+                {/* Small Markdown Copy Button */}
+                <button
+                  onClick={handleCopyMarkdown}
+                  className="inline-flex items-center gap-1 rounded-lg bg-slate-800/80 border border-slate-700/60 px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white hover:bg-slate-700 transition"
+                >
+                  {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                  <span>{copied ? '복사됨' : '복사'}</span>
+                </button>
+
+                <button
+                  onClick={() => setIsOriginalOpen(!isOriginalOpen)}
+                  className="flex items-center gap-1 text-xs text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg hover:text-white transition"
+                >
+                  <span>{isOriginalOpen ? '접기' : '펼치기'}</span>
+                  {isOriginalOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
               </div>
-            </button>
+            </div>
 
             {isOriginalOpen && (
               <div className="space-y-4 overflow-y-auto max-h-[600px] pr-2 transition-all duration-300">
@@ -193,7 +285,7 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
                         </span>
                       </div>
 
-                      {/* Render formatted markdown (Bold & Headers) */}
+                      {/* Render formatted markdown */}
                       <div className="space-y-2 text-xs leading-relaxed text-slate-200">
                         {renderFormattedText(textContent)}
                       </div>

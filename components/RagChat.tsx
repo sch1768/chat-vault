@@ -12,7 +12,7 @@ export const RagChat: React.FC<RagChatProps> = ({ conversationId }) => {
       id: 'welcome',
       sender: 'assistant',
       content:
-        '안녕하세요! 저장된 이 대화 기록에 대해 궁금한 점을 질문해 보세요. 관련 대화 문단을 검색하여 환각 없이 알려드립니다.',
+        '안녕하세요! 저장된 이 대화 기록에 대해 궁금한 점을 질문해 보세요. 관련 대화 문단을 검색하여 알려드립니다.',
     },
   ]);
   const [input, setInput] = useState('');
@@ -105,11 +105,10 @@ export const RagChat: React.FC<RagChatProps> = ({ conversationId }) => {
 
             <div className={`max-w-[85%] space-y-2`}>
               <div
-                className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                  msg.sender === 'user'
+                className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.sender === 'user'
                     ? 'bg-indigo-600 text-white rounded-br-none'
                     : 'bg-slate-800 text-slate-200 border border-slate-700/80 rounded-bl-none'
-                }`}
+                  }`}
               >
                 {msg.content}
               </div>

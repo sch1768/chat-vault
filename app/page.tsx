@@ -3,18 +3,29 @@
 import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { ImportModal } from '@/components/ImportModal';
+import { GuidePopup } from '@/components/GuidePopup';
 import { ConversationCard } from '@/components/ConversationCard';
 import { ConversationRecord } from '@/lib/types';
-import { Search, Hash, Brain, Sparkles, RefreshCw, BookmarkPlus } from 'lucide-react';
+import { Search, Hash, Brain, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const router = useRouter();
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isGuidePopupOpen, setIsGuidePopupOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg'>('base');
+
+  useEffect(() => {
+    // Check if user chose "don't show guide popup"
+    const hideGuide = localStorage.getItem('chatvault_hide_guide');
+    if (!hideGuide) {
+      setIsGuidePopupOpen(true);
+    }
+  }, []);
 
   const fetchConversations = async () => {
     setIsLoading(true);
@@ -35,12 +46,15 @@ export default function Home() {
     fetchConversations();
   }, []);
 
-  // Collect all unique tags
-  const allTags = Array.from(
-    new Set(conversations.flatMap((c) => c.tags || []))
-  );
+  const handleHideGuideForever = () => {
+    localStorage.setItem('chatvault_hide_guide', 'true');
+    setIsGuidePopupOpen(false);
+  };
 
-  // Filter conversations by search query & selected tag
+  // Collect unique tags
+  const allTags = Array.from(new Set(conversations.flatMap((c) => c.tags || [])));
+
+  // Filter conversations
   const filteredConversations = conversations.filter((c) => {
     const matchesSearch =
       c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -52,40 +66,14 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar onOpenImportModal={() => setIsImportModalOpen(true)} />
+    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+      <Navbar
+        onOpenImportModal={() => setIsImportModalOpen(true)}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+      />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Hero Banner */}
-        <section className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 p-8 shadow-2xl">
-          <div className="relative z-10 max-w-2xl space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-400 border border-indigo-500/20">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Phase 1 MVP - AI 세컨드 브레인 PWA</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
-              흩어진 AI 대화를<br />
-              <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                나만의 검증된 지식 자산으로
-              </span>
-            </h1>
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-              ChatGPT와 Gemini에서 나눈 소중한 대화 링크를 입력하면 3줄 핵심 요약과 자동 태깅이 완료됩니다.
-              저장본에서 바로 환각 없는 RAG 추가 질문을 이어나가 보세요.
-            </p>
-
-            <div className="pt-2 flex flex-wrap items-center gap-4">
-              <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 hover:from-indigo-500 hover:to-purple-500 transition active:scale-95"
-              >
-                <BookmarkPlus className="h-4 w-4" />
-                <span>지금 공유 링크 등록하기</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Search & Tag Filter Bar */}
         <section className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
           {/* Search Input */}
@@ -163,7 +151,7 @@ export default function Home() {
               </div>
               <h3 className="text-base font-bold text-white">등록된 대화 기록이 없습니다</h3>
               <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                상단의 <strong className="text-indigo-400">'대화 링크 등록'</strong> 버튼을 눌러 ChatGPT나 Gemini 공유 링크를 첫 지식 자산으로 등록해 보세요.
+                우측 상단의 <strong className="text-indigo-400">'대화 링크 등록'</strong> 버튼을 눌러 ChatGPT나 Gemini 공유 링크를 첫 지식 자산으로 등록해 보세요.
               </p>
               <button
                 onClick={() => setIsImportModalOpen(true)}
@@ -175,6 +163,12 @@ export default function Home() {
           )}
         </section>
       </main>
+
+      <GuidePopup
+        isOpen={isGuidePopupOpen}
+        onClose={() => setIsGuidePopupOpen(false)}
+        onHideForever={handleHideGuideForever}
+      />
 
       <ImportModal
         isOpen={isImportModalOpen}

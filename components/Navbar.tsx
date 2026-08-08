@@ -1,40 +1,107 @@
-import React from 'react';
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Brain, Plus, Sparkles, FolderKanban } from 'lucide-react';
+import { Brain, Plus, Settings, Sparkles, X, Sun, Moon, Type, BookOpen } from 'lucide-react';
 
 interface NavbarProps {
   onOpenImportModal: () => void;
+  fontSize: 'sm' | 'base' | 'lg';
+  setFontSize: (size: 'sm' | 'base' | 'lg') => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenImportModal }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenImportModal, fontSize, setFontSize }) => {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
+    <header className="sticky top-0 z-30 w-full border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3 transition hover:opacity-90">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 shadow-lg shadow-indigo-500/20">
+        {/* Brand Logo & Version */}
+        <Link href="/" className="flex items-center gap-2.5 transition hover:opacity-90">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 shadow-md shadow-indigo-500/20">
             <Brain className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold tracking-tight text-white">ChatVault</span>
-              <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-indigo-400 border border-indigo-500/20">
-                MVP
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">대화 지식 자산화 & RAG 세컨드 브레인</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-black tracking-tight text-white">ChatVault</span>
+            <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-400 border border-indigo-500/20">
+              v.1
+            </span>
           </div>
         </Link>
 
-        <div className="flex items-center gap-3">
+        {/* Right Actions: Register Link & Settings */}
+        <div className="flex items-center gap-2.5">
           <button
             onClick={onOpenImportModal}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:from-indigo-500 hover:to-purple-500 hover:shadow-indigo-500/25 active:scale-95"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-3.5 py-2 text-xs font-bold text-white shadow-md transition hover:from-indigo-500 hover:to-purple-500 active:scale-95"
           >
             <Plus className="h-4 w-4" />
             <span>대화 링크 등록</span>
           </button>
+
+          <button
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            title="시각 설정"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white transition"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
         </div>
       </div>
+
+      {/* Settings Dropdown / Modal */}
+      {isSettingsOpen && (
+        <div className="absolute right-4 top-16 z-40 w-72 rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl animate-in fade-in duration-150">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+            <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Settings className="h-3.5 w-3.5 text-indigo-400" />
+              <span>시각 및 환경 설정</span>
+            </h4>
+            <button
+              onClick={() => setIsSettingsOpen(false)}
+              className="text-slate-400 hover:text-white p-1 rounded"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="space-y-4 text-xs">
+            {/* Font Size Option */}
+            <div>
+              <label className="text-slate-400 font-semibold mb-1.5 block flex items-center gap-1">
+                <Type className="h-3.5 w-3.5 text-indigo-400" />
+                <span>대화 본문 글자 크기</span>
+              </label>
+              <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-slate-950 p-1 border border-slate-800">
+                <button
+                  onClick={() => setFontSize('sm')}
+                  className={`py-1.5 rounded-lg font-bold transition ${
+                    fontSize === 'sm' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  작게
+                </button>
+                <button
+                  onClick={() => setFontSize('base')}
+                  className={`py-1.5 rounded-lg font-bold transition ${
+                    fontSize === 'base' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  보통
+                </button>
+                <button
+                  onClick={() => setFontSize('lg')}
+                  className={`py-1.5 rounded-lg font-bold transition ${
+                    fontSize === 'lg' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  크게
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
