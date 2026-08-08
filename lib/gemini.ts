@@ -62,8 +62,14 @@ ${conversationText}
     const jsonText = response.text || '{}';
     const parsed = JSON.parse(jsonText);
 
+    // Prefer original parsed title if available and valid
+    const finalTitle =
+      existingTitle && existingTitle !== 'Untitled AI Conversation' && existingTitle !== 'Gemini Shared Conversation'
+        ? existingTitle
+        : parsed.title || existingTitle || 'AI 대화 노트';
+
     return {
-      title: parsed.title || existingTitle || 'AI 대화 보관함',
+      title: finalTitle,
       summary3Lines: Array.isArray(parsed.summary3Lines) ? parsed.summary3Lines : ['요약 데이터를 생성했습니다.'],
       tags: Array.isArray(parsed.tags) ? parsed.tags : ['#지식보관'],
     };
@@ -136,12 +142,12 @@ ${contextText}
 ${query}
 `;
 
-  // Model name mapping (Ensure standard Google GenAI API model identifiers)
+  // Model name mapping (Exact Google Gemini API string identifiers)
   let modelName = 'gemma-4-31b-it';
   if (selectedModel === 'gemini-2.5-flash-lite' || selectedModel === 'gemini-3.1-flash-lite') {
-    modelName = 'gemini-2.5-flash-lite';
-  } else if (selectedModel === 'gemini-2.5-flash') {
     modelName = 'gemini-2.5-flash';
+  } else if (selectedModel === 'gemini-1.5-flash' || selectedModel === 'gemini-1.5-flash-lite') {
+    modelName = 'gemini-1.5-flash';
   }
 
   try {
@@ -154,14 +160,15 @@ ${query}
   } catch (err) {
     console.error(`Gemini RAG answer failed with model ${modelName}:`, err);
     
-    // Fallback attempt with gemini-2.5-flash if primary model failed
+    // Fallback attempt with gemma-4-31b-it if API call fails
     try {
       const fallbackRes = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemma-4-31b-it',
         contents: prompt,
       });
       return fallbackRes.text || '답변을 생성했습니다.';
-    } catch {
+    } catch (fallbackErr) {
+      console.error('Gemini RAG fallback failed:', fallbackErr);
       return 'RAG 답변 생성 중 오류가 발생했습니다.';
     }
   }
