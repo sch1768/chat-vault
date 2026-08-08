@@ -142,25 +142,25 @@ ${contextText}
 ${query}
 `;
 
-  // Model name mapping (Exact Google Gemini API string identifiers)
-  let modelName = 'gemma-4-31b-it';
-  if (selectedModel === 'gemini-2.5-flash-lite' || selectedModel === 'gemini-3.1-flash-lite') {
-    modelName = 'gemini-2.5-flash';
-  } else if (selectedModel === 'gemini-1.5-flash' || selectedModel === 'gemini-1.5-flash-lite') {
-    modelName = 'gemini-1.5-flash';
+  // Exact Model ID mapping requested by user
+  let targetModel = selectedModel || 'gemma-4-31b-it';
+  if (targetModel === 'gemini-3.1-flash-lite') {
+    targetModel = 'gemini-3.1-flash-lite';
+  } else if (targetModel === 'gemini-2.5-flash-lite') {
+    targetModel = 'gemini-2.5-flash-lite';
   }
 
   try {
     const response = await ai.models.generateContent({
-      model: modelName,
+      model: targetModel,
       contents: prompt,
     });
 
     return response.text || '답변을 생성하지 못했습니다.';
-  } catch (err) {
-    console.error(`Gemini RAG answer failed with model ${modelName}:`, err);
-    
-    // Fallback attempt with gemma-4-31b-it if API call fails
+  } catch (err: unknown) {
+    const errText = err instanceof Error ? err.message : String(err);
+    console.warn(`Primary model (${targetModel}) failed: ${errText}. Attempting fallback to gemma-4-31b-it...`);
+
     try {
       const fallbackRes = await ai.models.generateContent({
         model: 'gemma-4-31b-it',
@@ -168,8 +168,8 @@ ${query}
       });
       return fallbackRes.text || '답변을 생성했습니다.';
     } catch (fallbackErr) {
-      console.error('Gemini RAG fallback failed:', fallbackErr);
-      return 'RAG 답변 생성 중 오류가 발생했습니다.';
+      console.error('All model generation attempts failed:', fallbackErr);
+      return `RAG 답변 생성 중 오류가 발생했습니다. (${errText.slice(0, 100)})`;
     }
   }
 }
