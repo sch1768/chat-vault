@@ -220,18 +220,34 @@ function parseMarkdownContent(
     if (!trimmed) continue;
 
     if (/^You said/i.test(trimmed)) {
-      // Gemini User Turn
-      const rawUserText = trimmed.replace(/^You said/i, '').trim();
-      const lines = rawUserText.split('\n');
-      
-      // First non-empty line is User question
-      const userQuestion = lines[0]?.trim() || '';
+      // Gemini User Turn: split user question and AI response
+      const rawText = trimmed.replace(/^You said/i, '').trim();
+      const lines = rawText.split('\n');
+
+      // User question lasts until empty line or section header / AI response
+      let userLines: string[] = [];
+      let aiLines: string[] = [];
+      let isAiPart = false;
+
+      for (const line of lines) {
+        const lineTrim = line.trim();
+        if (!isAiPart) {
+          if (lineTrim === '' && userLines.length > 0) {
+            isAiPart = true;
+          } else {
+            userLines.push(line);
+          }
+        } else {
+          aiLines.push(line);
+        }
+      }
+
+      const userQuestion = userLines.join('\n').trim();
+      const aiResponse = aiLines.join('\n').trim();
+
       if (userQuestion) {
         turns.push({ speaker: 'user', content: userQuestion });
       }
-
-      // Remaining text in this block is AI response
-      const aiResponse = lines.slice(1).join('\n').trim();
       if (aiResponse) {
         turns.push({ speaker: 'assistant', content: aiResponse });
       }
