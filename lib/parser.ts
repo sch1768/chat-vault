@@ -1,30 +1,39 @@
 import { ParsedConversation, Turn } from './types';
 
 /**
- * 3-Step Hybrid Parser for ChatGPT & Gemini Shared Links or Raw Text
+ * 3-Step Hybrid Parser for ChatGPT & Gemini Shared Links
  */
 export async function parseSharedLinkOrText(
   urlOrText: string
 ): Promise<ParsedConversation> {
   const trimmed = urlOrText.trim();
 
-  // Check if raw text/markdown or URL
+  // If raw text/markdown (fallback)
   if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
     return parseRawMarkdown(trimmed);
   }
 
-  const url = trimmed;
+  // Resolve short URLs (e.g. https://g.co/gemini/share/...)
+  let url = trimmed;
+  if (url.includes('g.co/gemini/share/')) {
+    try {
+      const redirectRes = await fetch(url, { method: 'HEAD', redirect: 'follow' });
+      if (redirectRes.url) url = redirectRes.url;
+    } catch {
+      // keep original URL if HEAD redirect check fails
+    }
+  }
 
   if (url.includes('chatgpt.com/share/') || url.includes('chat.openai.com/share/')) {
     return await parseChatGPTShareUrl(url);
   }
 
-  if (url.includes('share.gemini.google') || url.includes('gemini.google.com/share/')) {
+  if (url.includes('gemini.google.com/share/') || url.includes('g.co/gemini/share/')) {
     return await parseGeminiShareUrl(url);
   }
 
-  // Fallback for general URLs via Jina Reader API
-  return await parseViaJinaReader(url);
+  // General Jina Reader fallback
+  return await parseViaJinaReader(url, 'gemini');
 }
 
 /**
@@ -35,64 +44,123 @@ async function parseChatGPTShareUrl(url: string): Promise<ParsedConversation> {
     const res = await fetch(url, {
       headers: {
         'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         Accept: 'text/html,application/xhtml+xml',
       },
       next: { revalidate: 0 },
     });
 
-    if (!res.ok) {
-      throw new Error(`HTTP Error: ${res.status}`);
-    }
+    if (res.ok) {
+      const html = await res.text();
+      const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
 
-    const html = await res.text();
-    const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+      if (nextDataMatch && nextDataMatch[1]) {
+        const jsonData = JSON.parse(nextDataMatch[1]);
+        const serverResponse = jsonData.props?.pageProps?.serverResponse;
+        const shareData = serverResponse?.data || jsonData.props?.pageProps?.sharedData;
 
-    if (nextDataMatch && nextDataMatch[1]) {
-      const jsonData = JSON.parse(nextDataMatch[1]);
-      const serverResponse = jsonData.props?.pageProps?.serverResponse;
-      const shareData = serverResponse?.data || jsonData.props?.pageProps?.sharedData;
+        if (shareData) {
+          const title = shareData.title || 'ChatGPT Shared Conversation';
+          const linearConversation = shareData.linear_conversation || [];
+          const turns: Turn[] = [];
 
-      if (shareData) {
-        const title = shareData.title || 'ChatGPT Shared Conversation';
-        const linearConversation = shareData.linear_conversation || [];
-        const turns: Turn[] = [];
+          for (const item of linearConversation) {
+            const role = item.message?.author?.role;
+            const parts = item.message?.content?.parts || [];
+            const textContent = parts.filter((p: unknown) => typeof p === 'string').join('\n');
 
-        for (const item of linearConversation) {
-          const role = item.message?.author?.role;
-          const parts = item.message?.content?.parts || [];
-          const textContent = parts.filter((p: unknown) => typeof p === 'string').join('\n');
-
-          if (textContent && (role === 'user' || role === 'assistant')) {
-            turns.push({
-              speaker: role,
-              content: textContent,
-            });
+            if (textContent && (role === 'user' || role === 'assistant')) {
+              turns.push({
+                speaker: role,
+                content: textContent,
+              });
+            }
           }
-        }
 
-        if (turns.length > 0) {
-          return buildParsedConversation(title, url, 'chatgpt', turns);
+          if (turns.length > 0) {
+            return buildParsedConversation(title, url, 'chatgpt', turns);
+          }
         }
       }
     }
   } catch (err) {
-    console.warn('ChatGPT __NEXT_DATA__ Direct parsing failed, falling back to Jina Reader:', err);
+    console.warn('ChatGPT direct parsing failed, falling back to Jina Reader:', err);
   }
 
-  // Fallback to Jina Reader if direct extraction was blocked
   return await parseViaJinaReader(url, 'chatgpt');
 }
 
 /**
- * Step 2: Gemini or Scraper Fallback via Jina Reader (https://r.jina.ai/)
+ * Step 2: Gemini Shared Link Direct HTML & Jina Headless Parser
  */
 async function parseGeminiShareUrl(url: string): Promise<ParsedConversation> {
+  // Method 2A: Try direct fetch & extract embedded JavaScript initial data array
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+    });
+
+    if (res.ok) {
+      const html = await res.text();
+      
+      // Extract title from <title> or <meta property="og:title">
+      let title = 'Gemini Shared Conversation';
+      const titleMatch = html.match(/<meta property="og:title" content="([^"]+)"/i) || html.match(/<title>([^<]+)<\/title>/i);
+      if (titleMatch && titleMatch[1]) {
+        title = titleMatch[1].replace(/ - Gemini$/, '').trim();
+      }
+
+      // Gemini shared page embeds conversation data in JS arrays (AF_initDataCallback)
+      const dataMatches = html.matchAll(/AF_initDataCallback\s*\(\s*\{[\s\S]*?data\s*:\s*([\s\S]*?)\s*\}\s*\)\s*;/g);
+      const turns: Turn[] = [];
+
+      for (const match of dataMatches) {
+        const rawJsonStr = match[1];
+        if (rawJsonStr && rawJsonStr.includes('http') || rawJsonStr.length > 500) {
+          // Extract plain text blocks from JS data structures
+          const textMatches = rawJsonStr.match(/"([^"\\]*(?:\\.[^"\\]*)*)"/g);
+          if (textMatches) {
+            for (const quoted of textMatches) {
+              try {
+                const unquoted = JSON.parse(quoted);
+                if (
+                  typeof unquoted === 'string' &&
+                  unquoted.length > 20 &&
+                  !unquoted.startsWith('http') &&
+                  !unquoted.includes('gstatic.com') &&
+                  !unquoted.includes('google.com') &&
+                  !unquoted.startsWith('AF_')
+                ) {
+                  // Heuristic speaker assignment
+                  const speaker: 'user' | 'assistant' = turns.length % 2 === 0 ? 'user' : 'assistant';
+                  turns.push({ speaker, content: unquoted });
+                }
+              } catch {
+                // Ignore parse errors on individual string tokens
+              }
+            }
+          }
+        }
+      }
+
+      if (turns.length >= 2) {
+        return buildParsedConversation(title, url, 'gemini', turns);
+      }
+    }
+  } catch (err) {
+    console.warn('Gemini direct JS array extraction failed, falling back to Jina Headless:', err);
+  }
+
+  // Method 2B: Jina Reader with explicit Headless rendering & wait headers
   return await parseViaJinaReader(url, 'gemini');
 }
 
 /**
- * Helper: Jina Reader API Parser
+ * Helper: Jina Reader API Parser with Clean-up Filter
  */
 async function parseViaJinaReader(
   url: string,
@@ -104,15 +172,50 @@ async function parseViaJinaReader(
     headers: {
       Accept: 'text/plain',
       'X-No-Cache': 'true',
+      'X-With-Generated-Alt': 'true',
+      'X-Target-Selector': 'body',
+      'X-Wait-For-Selector': 'div, article, [role="main"]', // Wait for Web Components
     },
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to scrape link with status ${res.status}. Please try copying and pasting text directly.`);
+    throw new Error(`링크 파싱 실패 (상태 코드: ${res.status}). 공유 링크가 공개 설정되어 있는지 확인해 주세요.`);
   }
 
-  const markdown = await res.text();
-  return parseMarkdownContent(markdown, url, sourceType);
+  const rawMarkdown = await res.text();
+  const cleanedMarkdown = cleanScrapedMarkdown(rawMarkdown);
+
+  return parseMarkdownContent(cleanedMarkdown, url, sourceType);
+}
+
+/**
+ * Filter out Google/ChatGPT boilerplate header & footer noise
+ */
+function cleanScrapedMarkdown(markdown: string): string {
+  let cleaned = markdown;
+
+  // Remove Jina Header metadata
+  cleaned = cleaned.replace(/^Title:\s*.*$/gm, '');
+  cleaned = cleaned.replace(/^URL Source:\s*.*$/gm, '');
+  cleaned = cleaned.replace(/^Markdown Content:\s*/gm, '');
+
+  // Remove Google Sign-in & Footer navigation links
+  cleaned = cleaned.replace(/\[Sign in\]\(.*?\)/gi, '');
+  cleaned = cleaned.replace(/\[About Gemini Opens in a new window\]\(.*?\)/gi, '');
+  cleaned = cleaned.replace(/\[Get Gemini App Opens in a new window\]\(.*?\)/gi, '');
+  cleaned = cleaned.replace(/\[Subscriptions Opens in a new window\]\(.*?\)/gi, '');
+  cleaned = cleaned.replace(/\[For Business Opens in a new window\]\(.*?\)/gi, '');
+  cleaned = cleaned.replace(/\[Google Privacy Policy Opens in a new window\]\(.*?\)/gi, '');
+  cleaned = cleaned.replace(/\[Google Terms of Service Opens in a new window\]\(.*?\)/gi, '');
+  cleaned = cleaned.replace(/\[Your privacy & Gemini Apps Opens in a new window\]\(.*?\)/gi, '');
+  cleaned = cleaned.replace(/Gemini may display inaccurate info, including about people, so double-check its responses\./gi, '');
+  cleaned = cleaned.replace(/Created with \*\*Flash\*\*.*$/gm, '');
+
+  // Remove empty lines & trim
+  return cleaned
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .join('\n\n');
 }
 
 /**
@@ -133,10 +236,10 @@ function parseMarkdownContent(
   // Extract first title header if available
   const titleLine = lines.find((l) => l.startsWith('# '));
   if (titleLine) {
-    title = titleLine.replace(/^#\s+/, '').trim();
+    title = titleLine.replace(/^#\s+/, '').replace(/\*\*/g, '').trim();
   }
 
-  // Simple heuristic split for turns (User / Assistant)
+  // Turn splitting
   const turns: Turn[] = [];
   const turnBlocks = text.split(/(?=(?:###?\s*(?:User|Prompt|Human|Assistant|Gemini|ChatGPT|Response):?))/i);
 
@@ -151,7 +254,6 @@ function parseMarkdownContent(
       const content = trimmed.replace(/^(?:###?\s*(?:Assistant|Gemini|ChatGPT|Response):?)/i, '').trim();
       if (content) turns.push({ speaker: 'assistant', content });
     } else {
-      // General paragraph block
       const lastTurn = turns[turns.length - 1];
       if (lastTurn) {
         lastTurn.content += `\n\n${trimmed}`;

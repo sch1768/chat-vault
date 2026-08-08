@@ -10,7 +10,6 @@ interface ImportModalProps {
 }
 
 export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [activeTab, setActiveTab] = useState<'link' | 'text'>('link');
   const [inputVal, setInputVal] = useState('');
   const [step, setStep] = useState<number>(0); // 0: Idle, 1: Parsing (30%), 2: Summarizing (60%), 3: Embedding (100%)
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -109,67 +108,24 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
           </button>
         </div>
 
-        {/* Tab Selection */}
-        <div className="mt-4 flex gap-2 rounded-xl bg-slate-950 p-1 border border-slate-800">
-          <button
-            onClick={() => setActiveTab('link')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-lg transition ${
-              activeTab === 'link'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Link2 className="h-4 w-4" />
-            <span>공유 링크 접수</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('text')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-lg transition ${
-              activeTab === 'text'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <FileText className="h-4 w-4" />
-            <span>직접 붙여넣기</span>
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          {activeTab === 'link' ? (
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">
-                ChatGPT 또는 Gemini 공유 링크 (URL)
-              </label>
-              <input
-                type="url"
-                required
-                disabled={step > 0}
-                placeholder="https://chatgpt.com/share/... 또는 https://share.gemini.google/..."
-                value={inputVal}
-                onChange={(e) => setInputVal(e.target.value)}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
-              />
-              <p className="mt-1 text-xs text-slate-500">
-                💡 ChatGPT shared link는 `__NEXT_DATA__` 파서로, Gemini는 Jina Reader로 자동 추출됩니다.
-              </p>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">
-                대화 텍스트 또는 마크다운 직접 입력
-              </label>
-              <textarea
-                required
-                rows={6}
-                disabled={step > 0}
-                placeholder="ChatGPT 또는 Gemini에서 복사한 대화 텍스트나 마크다운을 여기에 붙여넣으세요..."
-                value={inputVal}
-                onChange={(e) => setInputVal(e.target.value)}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
-              />
-            </div>
-          )}
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">
+              ChatGPT 또는 Gemini 공유 링크 (URL)
+            </label>
+            <input
+              type="url"
+              required
+              disabled={step > 0}
+              placeholder="https://chatgpt.com/share/... 또는 https://g.co/gemini/share/..."
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+            />
+            <p className="mt-1.5 text-xs text-slate-500">
+              💡 공유 링크만 입력하면 본문 전체 턴과 맥락을 자동으로 추출하고 요약합니다.
+            </p>
+          </div>
 
           {errorMsg && (
             <div className="flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400">
