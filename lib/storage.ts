@@ -2,7 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { ConversationChunk, ConversationRecord, ParsedConversation } from './types';
 import { generateEmbedding } from './gemini';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const rawSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+// Clean trailing slashes or path suffixes that cause PGRST125
+const supabaseUrl = rawSupabaseUrl ? rawSupabaseUrl.replace(/\/+$|\/(v1|rest\/v1)\/?$/gi, '').trim() : '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
