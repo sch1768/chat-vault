@@ -16,8 +16,11 @@ export async function POST(req: NextRequest) {
     // 2. Vector Cosine Similarity Search
     const relevantChunks = await searchRelevantChunks(conversationId, queryEmbedding, 4);
 
-    // 3. Generate RAG Response with Gemini
-    const answer = await generateRagAnswer(query, relevantChunks);
+    // Fetch conversation for fallback
+    const conversation = await getConversationById(conversationId);
+
+    // 3. Generate RAG Response with Gemini & Fallback
+    const answer = await generateRagAnswer(query, relevantChunks, conversation?.full_markdown);
 
     return NextResponse.json({
       success: true,

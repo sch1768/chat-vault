@@ -105,23 +105,32 @@ export async function generateEmbedding(text: string): Promise<number[]> {
  */
 export async function generateRagAnswer(
   query: string,
-  contextChunks: { speaker: string; content: string }[]
+  contextChunks: { speaker: string; content: string }[],
+  fullMarkdownFallback?: string
 ): Promise<string> {
   if (!apiKey) {
     return 'GEMINI_API_KEY 환경변수가 설정되지 않았습니다. Vercel 환경변수나 .env.local 파일에 설정해 주세요.';
   }
 
-  const contextText = contextChunks
+  let contextText = contextChunks
     .map((c, i) => `[참고 맥락 ${i + 1} (${c.speaker})]:\n${c.content}`)
     .join('\n\n');
 
+  // Fallback to full markdown if vector search returned few or short chunks
+  if ((!contextChunks || contextChunks.length === 0) && fullMarkdownFallback) {
+    contextText = `[전체 대화 맥락]:\n${fullMarkdownFallback.slice(0, 10000)}`;
+  }
+
   const prompt = `
-당신은 사용자의 지난 AI 대화 기록을 바탕으로 질문에 정확하고 환각 없이 답변하는 지식 보조 AI입니다.
+당신은 사용자의 지난 AI 대화 기록을 바탕으로 질문에 친절하고 정확하게 답변하는 지식 보조 AI입니다.
 
-아래 주어진 [참고 맥락]을 최우선으로 사용하여 사용자의 [질문]에 답변해 주세요.
-참고 맥락에 없는 내용에 대해서는 솔직하게 "지정된 대화 기록에서는 확인되지 않는 내용입니다"라고 안내하세요.
+[요구사항]
+1. 최우선적으로 아래 주어진 [대화 맥락]을 참고하여 사용자의 [질문]에 답변해 주세요.
+2. 만약 [대화 맥락]에서 질문에 대한 직접적인 언급이 다소 부족하거나 정확히 일치하지 않는 경우:
+   - "💡 **저장된 대화 기록에서는 정확히 일치하는 문장을 찾기 어렵지만, 대화 내용 및 AI 지식을 바탕으로 정리해 드립니다.**"라는 안내 문구를 맨 첫 줄에 넣은 뒤, 
+   - 사용자의 질문에 대해 구구절절 길지 않고 **핵심 위주로 짧고 명확하게(2~4문장 내외)** 바로 답변을 제공해 주세요. 절대 무작정 "확인되지 않는 내용입니다"라고 단답형으로 거절하지 마세요.
 
-[참고 맥락]:
+[대화 맥락]:
 ${contextText}
 
 [사용자 질문]:
