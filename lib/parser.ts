@@ -168,18 +168,15 @@ async function parseViaJinaReader(
 ): Promise<ParsedConversation> {
   const jinaUrl = `https://r.jina.ai/${url}`;
 
+  // Simple clean fetch to avoid 401 status from custom Jina headers
   const res = await fetch(jinaUrl, {
     headers: {
       Accept: 'text/plain',
-      'X-No-Cache': 'true',
-      'X-With-Generated-Alt': 'true',
-      'X-Target-Selector': 'body',
-      'X-Wait-For-Selector': 'div, article, [role="main"]', // Wait for Web Components
     },
   });
 
   if (!res.ok) {
-    throw new Error(`링크 파싱 실패 (상태 코드: ${res.status}). 공유 링크가 공개 설정되어 있는지 확인해 주세요.`);
+    throw new Error(`링크 파싱 실패 (상태 코드: ${res.status}). 공유 링크가 올바른지 확인해 주세요.`);
   }
 
   const rawMarkdown = await res.text();
