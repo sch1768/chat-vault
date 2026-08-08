@@ -117,9 +117,26 @@ async function parseViaJinaReader(
   }
 
   const rawMarkdown = await res.text();
+
+  // Extract original web page title header from Jina output (e.g. "Title: Gemini - 알파벳 2분기 실적...")
+  let extractedTitle = '';
+  const titleLineMatch = rawMarkdown.match(/^Title:\s*(.+)$/m);
+  if (titleLineMatch && titleLineMatch[1]) {
+    extractedTitle = titleLineMatch[1]
+      .replace(/^Gemini\s*[-–—]\s*/i, '')
+      .replace(/^ChatGPT\s*[-–—]\s*/i, '')
+      .trim();
+  }
+
   const cleanedMarkdown = cleanScrapedMarkdown(rawMarkdown);
 
-  return parseMarkdownContent(cleanedMarkdown, url, sourceType);
+  const parsed = parseMarkdownContent(cleanedMarkdown, url, sourceType);
+
+  if (extractedTitle && (parsed.title === 'Untitled AI Conversation' || parsed.title === 'Gemini Shared Conversation')) {
+    parsed.title = extractedTitle;
+  }
+
+  return parsed;
 }
 
 /**
