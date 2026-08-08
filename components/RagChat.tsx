@@ -157,7 +157,7 @@ export const RagChat: React.FC<RagChatProps> = ({ conversationId }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isLoading}
-            className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none disabled:opacity-50"
+            className="flex-1 bg-transparent text-base text-white placeholder-slate-500 focus:outline-none disabled:opacity-50"
           />
           <button
             type="submit"

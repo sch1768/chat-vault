@@ -8,7 +8,7 @@ export async function parseSharedLinkOrText(
 ): Promise<ParsedConversation> {
   const trimmed = urlOrText.trim();
 
-  // If raw text/markdown (fallback)
+  // If raw text/markdown
   if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
     return parseRawMarkdown(trimmed);
   }
@@ -94,68 +94,6 @@ async function parseChatGPTShareUrl(url: string): Promise<ParsedConversation> {
  * Step 2: Gemini Shared Link Direct HTML & Jina Headless Parser
  */
 async function parseGeminiShareUrl(url: string): Promise<ParsedConversation> {
-  // Method 2A: Try direct fetch & extract embedded JavaScript initial data array
-  try {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-    });
-
-    if (res.ok) {
-      const html = await res.text();
-      
-      // Extract title from <title> or <meta property="og:title">
-      let title = 'Gemini Shared Conversation';
-      const titleMatch = html.match(/<meta property="og:title" content="([^"]+)"/i) || html.match(/<title>([^<]+)<\/title>/i);
-      if (titleMatch && titleMatch[1]) {
-        title = titleMatch[1].replace(/ - Gemini$/, '').trim();
-      }
-
-      // Gemini shared page embeds conversation data in JS arrays (AF_initDataCallback)
-      const dataMatches = html.matchAll(/AF_initDataCallback\s*\(\s*\{[\s\S]*?data\s*:\s*([\s\S]*?)\s*\}\s*\)\s*;/g);
-      const turns: Turn[] = [];
-
-      for (const match of dataMatches) {
-        const rawJsonStr = match[1];
-        if (rawJsonStr && rawJsonStr.includes('http') || rawJsonStr.length > 500) {
-          // Extract plain text blocks from JS data structures
-          const textMatches = rawJsonStr.match(/"([^"\\]*(?:\\.[^"\\]*)*)"/g);
-          if (textMatches) {
-            for (const quoted of textMatches) {
-              try {
-                const unquoted = JSON.parse(quoted);
-                if (
-                  typeof unquoted === 'string' &&
-                  unquoted.length > 20 &&
-                  !unquoted.startsWith('http') &&
-                  !unquoted.includes('gstatic.com') &&
-                  !unquoted.includes('google.com') &&
-                  !unquoted.startsWith('AF_')
-                ) {
-                  // Heuristic speaker assignment
-                  const speaker: 'user' | 'assistant' = turns.length % 2 === 0 ? 'user' : 'assistant';
-                  turns.push({ speaker, content: unquoted });
-                }
-              } catch {
-                // Ignore parse errors on individual string tokens
-              }
-            }
-          }
-        }
-      }
-
-      if (turns.length >= 2) {
-        return buildParsedConversation(title, url, 'gemini', turns);
-      }
-    }
-  } catch (err) {
-    console.warn('Gemini direct JS array extraction failed, falling back to Jina Headless:', err);
-  }
-
-  // Method 2B: Jina Reader with explicit Headless rendering & wait headers
   return await parseViaJinaReader(url, 'gemini');
 }
 
@@ -168,7 +106,6 @@ async function parseViaJinaReader(
 ): Promise<ParsedConversation> {
   const jinaUrl = `https://r.jina.ai/${url}`;
 
-  // Simple clean fetch to avoid 401 status from custom Jina headers
   const res = await fetch(jinaUrl, {
     headers: {
       Accept: 'text/plain',
@@ -207,16 +144,13 @@ function cleanScrapedMarkdown(markdown: string): string {
   cleaned = cleaned.replace(/\[Your privacy & Gemini Apps Opens in a new window\]\(.*?\)/gi, '');
   cleaned = cleaned.replace(/Gemini may display inaccurate info, including about people, so double-check its responses\./gi, '');
   cleaned = cleaned.replace(/Created with \*\*Flash\*\*.*$/gm, '');
+  cleaned = cleaned.replace(/👤 User/g, '');
 
-  // Remove empty lines & trim
-  return cleaned
-    .split('\n')
-    .filter((line) => line.trim().length > 0)
-    .join('\n\n');
+  return cleaned.trim();
 }
 
 /**
- * Step 3: Raw Markdown / Text Parser
+ * Step 3: Parse Markdown Content with "You said" & Multi-turn Detection
  */
 function parseRawMarkdown(text: string): ParsedConversation {
   return parseMarkdownContent(text, undefined, 'raw');
@@ -227,30 +161,47 @@ function parseMarkdownContent(
   url?: string,
   sourceType: 'chatgpt' | 'gemini' | 'raw' = 'raw'
 ): ParsedConversation {
-  const lines = text.split('\n');
   let title = 'Untitled AI Conversation';
 
   // Extract first title header if available
-  const titleLine = lines.find((l) => l.startsWith('# '));
-  if (titleLine) {
-    title = titleLine.replace(/^#\s+/, '').replace(/\*\*/g, '').trim();
+  const titleMatch = text.match(/^#\s+\*?\*?([^\n*]+)\*?\*?/m);
+  if (titleMatch && titleMatch[1]) {
+    title = titleMatch[1].trim();
   }
 
-  // Turn splitting
   const turns: Turn[] = [];
-  const turnBlocks = text.split(/(?=(?:###?\s*(?:User|Prompt|Human|Assistant|Gemini|ChatGPT|Response):?))/i);
+
+  // Split by "You said" (Gemini pattern) or "### User" / "### Assistant"
+  const turnBlocks = text.split(/(?=(?:You said|###?\s*(?:User|Prompt|Human|Assistant|Gemini|ChatGPT|Response):?))/i);
 
   for (const block of turnBlocks) {
     const trimmed = block.trim();
     if (!trimmed) continue;
 
-    if (/^(?:###?\s*(?:User|Prompt|Human):?)/i.test(trimmed)) {
+    if (/^You said/i.test(trimmed)) {
+      // Gemini User Turn
+      const rawUserText = trimmed.replace(/^You said/i, '').trim();
+      const lines = rawUserText.split('\n');
+      
+      // First non-empty line is User question
+      const userQuestion = lines[0]?.trim() || '';
+      if (userQuestion) {
+        turns.push({ speaker: 'user', content: userQuestion });
+      }
+
+      // Remaining text in this block is AI response
+      const aiResponse = lines.slice(1).join('\n').trim();
+      if (aiResponse) {
+        turns.push({ speaker: 'assistant', content: aiResponse });
+      }
+    } else if (/^(?:###?\s*(?:User|Prompt|Human):?)/i.test(trimmed)) {
       const content = trimmed.replace(/^(?:###?\s*(?:User|Prompt|Human):?)/i, '').trim();
       if (content) turns.push({ speaker: 'user', content });
     } else if (/^(?:###?\s*(?:Assistant|Gemini|ChatGPT|Response):?)/i.test(trimmed)) {
       const content = trimmed.replace(/^(?:###?\s*(?:Assistant|Gemini|ChatGPT|Response):?)/i, '').trim();
       if (content) turns.push({ speaker: 'assistant', content });
     } else {
+      // Append to previous turn or create initial turn
       const lastTurn = turns[turns.length - 1];
       if (lastTurn) {
         lastTurn.content += `\n\n${trimmed}`;
