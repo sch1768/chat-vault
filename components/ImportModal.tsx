@@ -120,7 +120,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
               placeholder="https://chatgpt.com/share/... 또는 https://g.co/gemini/share/..."
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
             />
             <p className="mt-1.5 text-xs text-slate-500">
               💡 공유 링크만 입력하면 본문 전체 턴과 맥락을 자동으로 추출하고 요약합니다.

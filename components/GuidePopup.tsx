@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Sparkles, X, Check, EyeOff, BookOpen, Layers } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, X, BookOpen } from 'lucide-react';
 
 interface GuidePopupProps {
   isOpen: boolean;
@@ -10,7 +10,17 @@ interface GuidePopupProps {
 }
 
 export const GuidePopup: React.FC<GuidePopupProps> = ({ isOpen, onClose, onHideForever }) => {
+  const [isChecked, setIsChecked] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    if (isChecked) {
+      onHideForever();
+    } else {
+      onClose();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
@@ -20,7 +30,7 @@ export const GuidePopup: React.FC<GuidePopupProps> = ({ isOpen, onClose, onHideF
             <Sparkles className="h-5 w-5 text-indigo-400" />
             <h2 className="text-base font-bold text-white">ChatVault 사용 안내</h2>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white">
+          <button onClick={handleClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -31,7 +41,7 @@ export const GuidePopup: React.FC<GuidePopupProps> = ({ isOpen, onClose, onHideF
               흩어진 AI 대화를 나만의 검증된 지식 자산으로
             </h3>
             <p className="text-slate-300">
-              ChatGPT와 Gemini에서 나눈 소중한 대화 링크를 입력하면 Gemma AI가 3줄 핵심 요약과 결론, 카테고리 태그를 자동 생성합니다.
+              ChatGPT와 Gemini에서 나눈 소중한 대화 링크를 입력하면 Gemma AI가 3줄 핵심 요약과 결론, 카테고리 태그를 자동 생성하여 데이터베이스에 저장합니다.
             </p>
           </div>
 
@@ -57,26 +67,29 @@ export const GuidePopup: React.FC<GuidePopupProps> = ({ isOpen, onClose, onHideF
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white font-bold text-[10px]">
                   3
                 </span>
-                <span>핵심 요약을 확인하고, 우측/하단 RAG 채팅에서 환각 없이 이어서 질문해보세요.</span>
+                <span>자동 생성된 핵심 요약을 확인하고, 우측/하단 RAG 채팅에서 환각 없이 이어서 질문해보세요.</span>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-6 flex items-center justify-between border-t border-slate-800/80 pt-4">
-          <button
-            onClick={onHideForever}
-            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition"
-          >
-            <EyeOff className="h-3.5 w-3.5" />
+          {/* Checkbox format for Don't show again */}
+          <label className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-200 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={(e) => setIsChecked(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900"
+            />
             <span>다시 보지 않기</span>
-          </button>
+          </label>
 
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-indigo-500 transition active:scale-95"
           >
-            확인
+            닫기
           </button>
         </div>
       </div>
