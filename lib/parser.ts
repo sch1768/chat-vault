@@ -202,9 +202,12 @@ function parseMarkdownContent(
   let title = 'Untitled AI Conversation';
 
   // Extract first title header if available
-  const titleMatch = text.match(/^#\s+\*?\*?([^\n*]+)\*?\*?/m);
+  const titleMatch = text.match(/^#+\s+\*?\*?([^\n*]+)\*?\*?/m);
   if (titleMatch && titleMatch[1]) {
-    title = titleMatch[1].trim();
+    const rawMatch = titleMatch[1].trim();
+    if (!/direct access to Google AI/i.test(rawMatch)) {
+      title = rawMatch;
+    }
   }
 
   const turns: Turn[] = [];
@@ -239,30 +242,19 @@ function parseMarkdownContent(
       const content = trimmed.replace(/^(?:###?\s*(?:Assistant|Gemini|ChatGPT|Response):?)/i, '').trim();
       if (content) turns.push({ speaker: 'assistant', content });
     } else {
-      // If block contains numbered list like "1. 샌디스크 실적 발표" or starts with AI response format, treat as assistant
       const lastTurn = turns[turns.length - 1];
-      if (lastTurn && lastTurn.speaker === 'user' && (/^\d+\.\s+/.test(trimmed) || /^[A-Z]\.\s+/.test(trimmed))) {
-        turns.push({ speaker: 'assistant', content: trimmed });
-      } else if (lastTurn) {
+      if (lastTurn) {
         lastTurn.content += `\n\n${trimmed}`;
       } else {
-        // First block without header: If it has numbered list, split first line as User question and rest as AI answer
-        const lines = trimmed.split('\n');
-        const firstLine = lines[0]?.trim() || '';
-        const restText = lines.slice(1).join('\n').trim();
-
-        if (firstLine && restText) {
-          turns.push({ speaker: 'user', content: firstLine });
-          turns.push({ speaker: 'assistant', content: restText });
-        } else {
-          turns.push({ speaker: 'user', content: trimmed });
-        }
+        // If shared Gemini markdown starts directly with AI response (no 'You said' header),
+        // we create a placeholder user question that Gemma AI will restore from context.
+        turns.push({ speaker: 'assistant', content: trimmed });
       }
     }
   }
 
   if (turns.length === 0) {
-    turns.push({ speaker: 'user', content: text });
+    turns.push({ speaker: 'assistant', content: text });
   }
 
   return buildParsedConversation(title, url, sourceType, turns);
