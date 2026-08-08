@@ -201,11 +201,11 @@ function parseMarkdownContent(
 ): ParsedConversation {
   let title = 'Untitled AI Conversation';
 
-  // Extract first title header if available
-  const titleMatch = text.match(/^#+\s+\*?\*?([^\n*]+)\*?\*?/m);
+  // Extract page title from H1 (# Title) if explicitly present
+  const titleMatch = text.match(/^#\s+\*?\*?([^\n*]+)\*?\*?/m);
   if (titleMatch && titleMatch[1]) {
     const rawMatch = titleMatch[1].trim();
-    if (!/direct access to Google AI/i.test(rawMatch)) {
+    if (!/direct access to Google AI/i.test(rawMatch) && !/^\d+\./.test(rawMatch)) {
       title = rawMatch;
     }
   }

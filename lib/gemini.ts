@@ -60,18 +60,25 @@ ${conversationText}
     });
 
     const jsonText = response.text || '{}';
-    const parsed = JSON.parse(jsonText);
+    const parsedData = JSON.parse(jsonText);
 
-    // Prefer original parsed title if available and valid
-    const finalTitle =
-      existingTitle && existingTitle !== 'Untitled AI Conversation' && existingTitle !== 'Gemini Shared Conversation'
-        ? existingTitle
-        : parsed.title || existingTitle || 'AI 대화 노트';
+    // Prefer Gemma AI generated summary title if original title is generic or section header (e.g. ## 1. ...)
+    const isGenericTitle =
+      !existingTitle ||
+      existingTitle === 'Untitled AI Conversation' ||
+      existingTitle === 'Gemini Shared Conversation' ||
+      /^\d+\./.test(existingTitle) ||
+      /^##\s+/.test(existingTitle) ||
+      /direct access to Google AI/i.test(existingTitle);
+
+    const finalTitle = isGenericTitle
+      ? parsedData.title || existingTitle || 'AI 대화 노트'
+      : existingTitle;
 
     return {
       title: finalTitle,
-      summary3Lines: Array.isArray(parsed.summary3Lines) ? parsed.summary3Lines : ['요약 데이터를 생성했습니다.'],
-      tags: Array.isArray(parsed.tags) ? parsed.tags : ['#지식보관'],
+      summary3Lines: Array.isArray(parsedData.summary3Lines) ? parsedData.summary3Lines : ['요약 데이터를 생성했습니다.'],
+      tags: Array.isArray(parsedData.tags) ? parsedData.tags : ['#지식보관'],
     };
   } catch (err) {
     console.error('Gemini summary generation failed:', err);
