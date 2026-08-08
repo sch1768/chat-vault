@@ -103,15 +103,16 @@ export const RagChat: React.FC<RagChatProps> = ({ conversationId }) => {
               </div>
             )}
 
-            <div className={`max-w-[85%] space-y-2`}>
-              <div
-                className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.sender === 'user'
-                    ? 'bg-indigo-600 text-white rounded-br-none'
-                    : 'bg-slate-800 text-slate-200 border border-slate-700/80 rounded-bl-none'
+              <div className={`max-w-[85%] space-y-2`}>
+                <div
+                  className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                    msg.sender === 'user'
+                      ? 'bg-indigo-600 text-white rounded-br-none font-medium'
+                      : 'bg-slate-800 text-slate-200 border border-slate-700/80 rounded-bl-none'
                   }`}
-              >
-                {msg.content}
-              </div>
+                >
+                  {renderRagMessageContent(msg.content)}
+                </div>
 
               {/* RAG Source Context Highlights */}
               {msg.sources && msg.sources.length > 0 && (
@@ -170,3 +171,28 @@ export const RagChat: React.FC<RagChatProps> = ({ conversationId }) => {
     </div>
   );
 };
+
+function renderRagMessageContent(content: string) {
+  const lines = content.split('\n');
+  return lines.map((line, idx) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <div key={idx} className="h-1.5" />;
+
+    const parts = line.split(/(\*\*.*?\*\*)/g);
+
+    return (
+      <p key={idx} className="my-0.5">
+        {parts.map((part, partIdx) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return (
+              <strong key={partIdx} className="font-bold text-white bg-slate-700/50 px-1 rounded">
+                {part.slice(2, -2)}
+              </strong>
+            );
+          }
+          return part;
+        })}
+      </p>
+    );
+  });
+}

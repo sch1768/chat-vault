@@ -117,13 +117,13 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
               type="url"
               required
               disabled={step > 0}
-              placeholder="https://chatgpt.com/share/... 또는 https://g.co/gemini/share/..."
+              placeholder=""
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
             />
-            <p className="mt-1.5 text-xs text-slate-500">
-              💡 공유 링크만 입력하면 본문 전체 턴과 맥락을 자동으로 추출하고 요약합니다.
+            <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
+              💡 예시: <span className="text-slate-300 font-mono">https://chatgpt.com/share/...</span> 또는 <span className="text-slate-300 font-mono">https://g.co/gemini/share/...</span>
             </p>
           </div>
 
@@ -140,11 +140,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onSuc
               <div className="flex justify-between text-xs font-semibold text-slate-300">
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-400" />
-                  {step === 1 && '1단계: 대화 내용 웹 파싱 중 (30%)'}
-                  {step === 2 && '2단계: Gemini AI 3줄 요약 & 자동 태깅 중 (60%)'}
-                  {step === 3 && '3단계: RAG 벡터 DB 임베딩 & 저장 완료 중 (100%)'}
+                  {step === 1 && '1단계: 대화 내용 파싱 중'}
+                  {step === 2 && '2단계: Gemma AI 요약 & 태깅 중'}
+                  {step === 3 && '3단계: RAG 벡터 DB 저장 완료 중'}
                 </span>
-                <span className="text-indigo-400">{step === 1 ? '30%' : step === 2 ? '60%' : '100%'}</span>
+                <span className="text-indigo-400 font-bold">{step === 1 ? '30%' : step === 2 ? '60%' : '100%'}</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
                 <div

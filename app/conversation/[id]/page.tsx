@@ -4,10 +4,10 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { ConversationRecord } from '@/lib/types';
 import { RagChat } from '@/components/RagChat';
+import { Navbar } from '@/components/Navbar';
+import { ImportModal } from '@/components/ImportModal';
 import {
-  ArrowLeft,
   ExternalLink,
-  Calendar,
   Hash,
   MessageSquare,
   Sparkles,
@@ -16,9 +16,6 @@ import {
   ChevronDown,
   ChevronUp,
   Edit2,
-  Bot,
-  User,
-  Brain,
 } from 'lucide-react';
 
 export default function ConversationDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -28,7 +25,9 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
   const [conversation, setConversation] = useState<ConversationRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [isOriginalOpen, setIsOriginalOpen] = useState(true); // Default open
+  const [isOriginalOpen, setIsOriginalOpen] = useState(true);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg'>('base');
 
   // Title editing state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -99,23 +98,12 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
-      {/* Fixed Clean Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md px-4 py-3 sm:px-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-black tracking-tight text-white">ChatVault</span>
-            <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-400 border border-indigo-500/20">
-              v.1
-            </span>
-          </div>
-        </div>
-      </header>
+      {/* Standard Fixed Navbar with Settings & Register Link buttons */}
+      <Navbar
+        onOpenImportModal={() => setIsImportModalOpen(true)}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+      />
 
       {/* Main Split View */}
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
@@ -125,9 +113,9 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
           <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3 shadow-lg">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
               <div className="flex items-center gap-2">
-                {/* Source Badge with Icon */}
+                {/* Source Badge with Clean Color */}
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider ${
                     conversation.source_type === 'chatgpt'
                       ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                       : conversation.source_type === 'gemini'
@@ -135,9 +123,6 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
                       : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
                   }`}
                 >
-                  <span className="text-sm">
-                    {conversation.source_type === 'chatgpt' ? '🤖' : conversation.source_type === 'gemini' ? '✨' : '📝'}
-                  </span>
                   <span>{conversation.source_type}</span>
                 </span>
               </div>
@@ -156,7 +141,7 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
               )}
             </div>
 
-            {/* Editable Title Section */}
+            {/* Editable Title Section (16px font-size for iOS auto-zoom prevention) */}
             <div>
               {isEditingTitle ? (
                 <div className="flex items-center gap-2 mt-1">
@@ -164,12 +149,12 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
                     type="text"
                     value={titleInput}
                     onChange={(e) => setTitleInput(e.target.value)}
-                    className="flex-1 rounded-xl border border-indigo-500 bg-slate-950 px-3 py-1.5 text-sm text-white focus:outline-none"
+                    className="flex-1 rounded-xl border border-indigo-500 bg-slate-950 px-3 py-2 text-base text-white focus:outline-none"
                     autoFocus
                   />
                   <button
                     onClick={handleSaveTitle}
-                    className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-500"
+                    className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-500"
                   >
                     저장
                   </button>
@@ -178,7 +163,7 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
                       setTitleInput(conversation.title);
                       setIsEditingTitle(false);
                     }}
-                    className="rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-white"
+                    className="rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-slate-400 hover:text-white"
                   >
                     취소
                   </button>
@@ -189,9 +174,9 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
                   <button
                     onClick={() => setIsEditingTitle(true)}
                     title="제목 수정"
-                    className="opacity-60 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-indigo-300 transition"
+                    className="opacity-60 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-indigo-300 transition shrink-0"
                   >
-                    <Edit2 className="h-3.5 w-3.5" />
+                    <Edit2 className="h-4 w-4" />
                   </button>
                 </div>
               )}
@@ -262,7 +247,6 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
                 {conversation.full_markdown.split('\n\n### ').map((block, i) => {
                   const rawBlock = block.startsWith('### ') ? block : `### ${block}`;
                   const isUser = rawBlock.startsWith('### User');
-                  const isAssistant = rawBlock.startsWith('### Assistant');
 
                   const textContent = rawBlock
                     .replace(/^### User\n?/, '')
@@ -286,7 +270,11 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
                       </div>
 
                       {/* Render formatted markdown */}
-                      <div className="space-y-2 text-xs leading-relaxed text-slate-200">
+                      <div
+                        className={`space-y-2 leading-relaxed text-slate-200 ${
+                          fontSize === 'sm' ? 'text-xs' : fontSize === 'lg' ? 'text-base' : 'text-sm'
+                        }`}
+                      >
                         {renderFormattedText(textContent)}
                       </div>
                     </div>
@@ -302,6 +290,14 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ i
           <RagChat conversationId={conversation.id} />
         </section>
       </main>
+
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={(newId) => {
+          window.location.href = `/conversation/${newId}`;
+        }}
+      />
     </div>
   );
 }
@@ -341,7 +337,7 @@ function renderFormattedText(text: string) {
           const parts = line.split(/(\*\*.*?\*\*)/g);
 
           return (
-            <p key={lIdx} className="text-xs text-slate-200 leading-normal">
+            <p key={lIdx} className="leading-normal">
               {parts.map((part, partIdx) => {
                 if (part.startsWith('**') && part.endsWith('**')) {
                   return (
