@@ -119,15 +119,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {currentModel === 'gemini-2.5-flash-lite' && <span className="text-[10px]">✓</span>}
                 </button>
                 <button
-                  onClick={() => handleModelChange('gemini-1.5-flash-lite')}
+                  onClick={() => handleModelChange('gemini-3.1-flash-lite')}
                   className={`py-1.5 px-2 rounded-lg font-bold text-left flex items-center justify-between transition ${
-                    currentModel === 'gemini-1.5-flash-lite'
+                    currentModel === 'gemini-3.1-flash-lite'
                       ? 'bg-indigo-600 text-white'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <span>Gemini 1.5 Flash Lite (초경량)</span>
-                  {currentModel === 'gemini-1.5-flash-lite' && <span className="text-[10px]">✓</span>}
+                  <span>Gemini 3.1 Flash Lite (최신)</span>
+                  {currentModel === 'gemini-3.1-flash-lite' && <span className="text-[10px]">✓</span>}
                 </button>
               </div>
             </div>

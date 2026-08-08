@@ -13,8 +13,8 @@ export async function POST(req: NextRequest) {
     // 1. Generate Query Vector Embedding
     const queryEmbedding = await generateEmbedding(query);
 
-    // 2. Vector Cosine Similarity Search
-    const relevantChunks = await searchRelevantChunks(conversationId, queryEmbedding, 4);
+    // 2. Vector Cosine Similarity Search (Top 3 Chunks)
+    const relevantChunks = await searchRelevantChunks(conversationId, queryEmbedding, 3);
 
     // Fetch conversation for fallback
     const conversation = await getConversationById(conversationId);

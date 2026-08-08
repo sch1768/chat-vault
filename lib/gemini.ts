@@ -136,12 +136,12 @@ ${contextText}
 ${query}
 `;
 
-  // Model name mapping
+  // Model name mapping (Ensure standard Google GenAI API model identifiers)
   let modelName = 'gemma-4-31b-it';
-  if (selectedModel === 'gemini-2.5-flash-lite') {
+  if (selectedModel === 'gemini-2.5-flash-lite' || selectedModel === 'gemini-3.1-flash-lite') {
     modelName = 'gemini-2.5-flash-lite';
-  } else if (selectedModel === 'gemini-1.5-flash-lite' || selectedModel === 'gemini-1.5-flash') {
-    modelName = 'gemini-1.5-flash';
+  } else if (selectedModel === 'gemini-2.5-flash') {
+    modelName = 'gemini-2.5-flash';
   }
 
   try {
@@ -152,7 +152,17 @@ ${query}
 
     return response.text || '답변을 생성하지 못했습니다.';
   } catch (err) {
-    console.error('Gemini RAG answer failed:', err);
-    return 'RAG 답변 생성 중 오류가 발생했습니다.';
+    console.error(`Gemini RAG answer failed with model ${modelName}:`, err);
+    
+    // Fallback attempt with gemini-2.5-flash if primary model failed
+    try {
+      const fallbackRes = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      return fallbackRes.text || '답변을 생성했습니다.';
+    } catch {
+      return 'RAG 답변 생성 중 오류가 발생했습니다.';
+    }
   }
 }
