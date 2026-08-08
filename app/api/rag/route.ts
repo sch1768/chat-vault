@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateEmbedding, generateRagAnswer } from '@/lib/gemini';
-import { searchRelevantChunks } from '@/lib/storage';
+import { searchRelevantChunks, getConversationById } from '@/lib/storage';
 
 export async function POST(req: NextRequest) {
   try {
