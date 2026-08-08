@@ -169,3 +169,22 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
   if (normA === 0 || normB === 0) return 0;
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
+
+/**
+ * Delete selected conversations and their chunks from Supabase or memory fallback
+ */
+export async function deleteConversationsFromStorage(ids: string[]): Promise<boolean> {
+  if (supabase) {
+    const { error: chunkErr } = await supabase.from('conversation_chunks').delete().in('conversation_id', ids);
+    if (chunkErr) console.error('Supabase chunk delete error:', chunkErr);
+
+    const { error: convErr } = await supabase.from('conversations').delete().in('id', ids);
+    if (convErr) console.error('Supabase conversation delete error:', convErr);
+
+    return !convErr;
+  }
+
+  memoryConversations = memoryConversations.filter((c) => !ids.includes(c.id));
+  memoryChunks = memoryChunks.filter((c) => !ids.includes(c.conversation_id));
+  return true;
+}

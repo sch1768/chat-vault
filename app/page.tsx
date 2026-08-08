@@ -6,7 +6,7 @@ import { ImportModal } from '@/components/ImportModal';
 import { GuidePopup } from '@/components/GuidePopup';
 import { ConversationCard } from '@/components/ConversationCard';
 import { ConversationRecord } from '@/lib/types';
-import { Search, Hash, Brain, RefreshCw } from 'lucide-react';
+import { Search, Hash, Brain, RefreshCw, Trash2, CheckSquare, Square } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function Home() {
@@ -19,8 +19,11 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg'>('base');
 
+  // Multi-selection state for deletion
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
-    // Check if user chose "don't show guide popup"
     const hideGuide = localStorage.getItem('chatvault_hide_guide');
     if (!hideGuide) {
       setIsGuidePopupOpen(true);
@@ -65,8 +68,53 @@ export default function Home() {
     return matchesSearch && matchesTag;
   });
 
+  // Toggle selection for a single conversation
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle Select All
+  const handleSelectAll = () => {
+    if (selectedIds.length === filteredConversations.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredConversations.map((c) => c.id));
+    }
+  };
+
+  // Bulk Delete Handler
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0 || isDeleting) return;
+
+    if (!confirm(`선택한 ${selectedIds.length}개의 대화 기록을 정말 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch('/api/conversations/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+
+      if (res.ok) {
+        setSelectedIds([]);
+        fetchConversations();
+      }
+    } catch (err) {
+      console.error('Failed to delete conversations:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div className={`min-h-screen flex flex-col bg-slate-950 text-slate-100 ${
+      fontSize === 'sm' ? 'text-xs' : fontSize === 'lg' ? 'text-base' : 'text-sm'
+    }`}>
       <Navbar
         onOpenImportModal={() => setIsImportModalOpen(true)}
         fontSize={fontSize}
@@ -74,22 +122,62 @@ export default function Home() {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Search & Tag Filter Bar */}
-        <section className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
-          {/* Search Input */}
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="대화 제목 또는 요약 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-800 bg-slate-900/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition"
-            />
+        {/* Search, Tag Filter & Delete Bar */}
+        <section className="flex flex-col space-y-4 border-b border-slate-800/80 pb-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Search Input */}
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="대화 제목 또는 요약 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-xl border border-slate-800 bg-slate-900/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition"
+              />
+            </div>
+
+            {/* Selection & Bulk Actions */}
+            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
+              {filteredConversations.length > 0 && (
+                <button
+                  onClick={handleSelectAll}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition"
+                >
+                  {selectedIds.length === filteredConversations.length ? (
+                    <CheckSquare className="h-4 w-4 text-indigo-400" />
+                  ) : (
+                    <Square className="h-4 w-4 text-slate-500" />
+                  )}
+                  <span>
+                    {selectedIds.length === filteredConversations.length ? '전체 해제' : '전체 선택'}
+                  </span>
+                </button>
+              )}
+
+              {selectedIds.length > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={isDeleting}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-red-600/20 border border-red-500/30 px-3.5 py-2 text-xs font-bold text-red-400 hover:bg-red-600/30 transition disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>선택 항목 삭제 ({selectedIds.length})</span>
+                </button>
+              )}
+
+              <button
+                onClick={fetchConversations}
+                title="목록 새로고침"
+                className="rounded-xl p-2.5 bg-slate-900 text-slate-400 hover:text-white border border-slate-800 transition"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {/* Tag Chips */}
-          <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0">
+          <div className="flex items-center gap-2 overflow-x-auto w-full pb-2">
             <button
               onClick={() => setSelectedTag(null)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition shrink-0 ${
@@ -115,14 +203,6 @@ export default function Home() {
                 <span>{tag.replace(/^#/, '')}</span>
               </button>
             ))}
-
-            <button
-              onClick={fetchConversations}
-              title="목록 새로고침"
-              className="rounded-lg p-2 bg-slate-900 text-slate-400 hover:text-white border border-slate-800 transition ml-auto sm:ml-0"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
           </div>
         </section>
 
@@ -141,6 +221,8 @@ export default function Home() {
                   key={c.id}
                   conversation={c}
                   onTagClick={(tag) => setSelectedTag(tag)}
+                  isSelected={selectedIds.includes(c.id)}
+                  onToggleSelect={handleToggleSelect}
                 />
               ))}
             </div>

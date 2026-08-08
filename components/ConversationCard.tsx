@@ -6,9 +6,16 @@ import { ConversationRecord } from '@/lib/types';
 interface ConversationCardProps {
   conversation: ConversationRecord;
   onTagClick?: (tag: string) => void;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export const ConversationCard: React.FC<ConversationCardProps> = ({ conversation, onTagClick }) => {
+export const ConversationCard: React.FC<ConversationCardProps> = ({
+  conversation,
+  onTagClick,
+  isSelected,
+  onToggleSelect,
+}) => {
   const formattedDate = new Date(conversation.created_at).toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'short',
@@ -16,11 +23,26 @@ export const ConversationCard: React.FC<ConversationCardProps> = ({ conversation
   });
 
   return (
-    <div className="group relative flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/60 p-5 backdrop-blur-sm transition duration-200 hover:-translate-y-1 hover:border-indigo-500/50 hover:bg-slate-900/90 hover:shadow-xl hover:shadow-indigo-500/10">
+    <div
+      className={`group relative flex flex-col justify-between rounded-2xl border p-5 backdrop-blur-sm transition duration-200 ${
+        isSelected
+          ? 'border-indigo-500 bg-indigo-950/30 shadow-lg shadow-indigo-500/20'
+          : 'border-slate-800 bg-slate-900/60 hover:-translate-y-1 hover:border-indigo-500/50 hover:bg-slate-900/90 hover:shadow-xl hover:shadow-indigo-500/10'
+      }`}
+    >
       <div>
-        {/* Source Badge & Date */}
+        {/* Checkbox Header & Source Badge */}
         <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            {onToggleSelect && (
+              <input
+                type="checkbox"
+                checked={!!isSelected}
+                onChange={() => onToggleSelect(conversation.id)}
+                className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+            )}
+
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${
                 conversation.source_type === 'chatgpt'
