@@ -158,10 +158,12 @@ async function parseViaJinaReader(
 function cleanScrapedMarkdown(markdown: string): string {
   let cleaned = markdown;
 
-  // Remove Jina Header metadata
+  // Remove Jina Header metadata & system warnings
   cleaned = cleaned.replace(/^Title:\s*.*$/gm, '');
+  cleaned = cleaned.replace(/^Description:\s*.*$/gm, '');
   cleaned = cleaned.replace(/^URL Source:\s*.*$/gm, '');
   cleaned = cleaned.replace(/^Markdown Content:\s*/gm, '');
+  cleaned = cleaned.replace(/Warning:\s*This page maybe not yet fully loaded.*$/gm, '');
 
   // Remove Google Sign-in & Footer navigation links
   cleaned = cleaned.replace(/\[\s*\]\(https:\/\/www\.google\.com.*?\)/gi, '');
