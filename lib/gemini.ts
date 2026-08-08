@@ -50,7 +50,7 @@ ${conversationText}
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemma-4-31b-it',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -76,7 +76,7 @@ ${conversationText}
 }
 
 /**
- * Generate 768-dim Vector Embedding using Gemini text-embedding-004
+ * Generate 768-dim Vector Embedding using Gemini gemini-embedding-001
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   if (!apiKey) {
@@ -86,7 +86,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
   try {
     const response = await ai.models.embedContent({
-      model: 'text-embedding-004',
+      model: 'gemini-embedding-001',
       contents: text.slice(0, 2048),
     });
 
@@ -128,7 +128,7 @@ ${query}
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemma-4-31b-it',
       contents: prompt,
     });
 
