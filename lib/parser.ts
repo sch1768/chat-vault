@@ -134,7 +134,10 @@ function cleanScrapedMarkdown(markdown: string): string {
   cleaned = cleaned.replace(/^Markdown Content:\s*/gm, '');
 
   // Remove Google Sign-in & Footer navigation links
+  cleaned = cleaned.replace(/\[\s*\]\(https:\/\/www\.google\.com.*?\)/gi, '');
+  cleaned = cleaned.replace(/\[\s*\]\(https:\/\/gemini\.google\.com.*?\)/gi, '');
   cleaned = cleaned.replace(/\[Sign in\]\(.*?\)/gi, '');
+  cleaned = cleaned.replace(/!\[Image \d+\]\(.*?\)/gi, '');
   cleaned = cleaned.replace(/\[About Gemini Opens in a new window\]\(.*?\)/gi, '');
   cleaned = cleaned.replace(/\[Get Gemini App Opens in a new window\]\(.*?\)/gi, '');
   cleaned = cleaned.replace(/\[Subscriptions Opens in a new window\]\(.*?\)/gi, '');
@@ -144,6 +147,11 @@ function cleanScrapedMarkdown(markdown: string): string {
   cleaned = cleaned.replace(/\[Your privacy & Gemini Apps Opens in a new window\]\(.*?\)/gi, '');
   cleaned = cleaned.replace(/Gemini may display inaccurate info, including about people, so double-check its responses\./gi, '');
   cleaned = cleaned.replace(/Created with \*\*Flash\*\*.*$/gm, '');
+  cleaned = cleaned.replace(/Published August.*$/gm, '');
+  cleaned = cleaned.replace(/^Sign in$/gm, '');
+  cleaned = cleaned.replace(/^Google apps$/gm, '');
+  cleaned = cleaned.replace(/^Copy public link$/gm, '');
+  cleaned = cleaned.replace(/^Report$/gm, '');
   cleaned = cleaned.replace(/👤 User/g, '');
 
   return cleaned.trim();
